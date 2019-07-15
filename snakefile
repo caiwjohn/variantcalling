@@ -7,6 +7,7 @@ PREAMBLE
 configfile: "test.yaml"
 
 READS= ["SRR1801135", "SRR1801136"]
+SAMPLES= ["BESC-119"]
 
 # Rule to target full run
 rule all:
@@ -114,7 +115,7 @@ rule BQSR:
 rule haplotype_caller:
     input:
         ref= "Ptrichocarpa_444_v3.0.fa",
-        reads= expand("recal/{sample}.bam", sample=SAMPLES)
+        reads= "recal/{sample}.bam"
     output:
         "GVCF/{sample}.g.vcf"
     shell:
@@ -123,37 +124,20 @@ rule haplotype_caller:
         "HaplotypeCaller -I {input.reads} "
         "--emitRefConfidence GVCF "
         "-O {output}"
-
-rule create_map:
-    input:
-        complete= "map.done",
-        dir= directory("GVCF")
-    output:
-        "test.sample_map"
-    run:
-        for sample in input.dir:
-            pieces= sample.split(".")
-            with open(output, "w") as out:
-                out.write("{} \t {}".format(pieces[0]))
-
-# TODO: Add step to create map file for gvcf consolidation
-# https://software.broadinstitute.org/gatk/documentation/tooldocs/4.0.5.1/org_broadinstitute_hellbender_tools_genomicsdb_GenomicsDBImport.php
-# TODO: Consider adding step for automated .bed file creation
-# TODO: how is this dependent on previous step?
-# This step can be a pain
+ 
+# TODO will it work passing individually?
 rule consolidate_gvcf:
     input:
-        "test.sample_map"
+        expand("GVCF/{sample}.g.vcf", sample= config['samples'])
     params:
         "Ptrichocarpa_444_v3.0.bed"
     output:
-        touch("map.done"),
         directory("cohort_database")
     shell:
         "gatk GenomicsDBImport "
         "--genomicsdb-workspace-path {output} "
         "--batch-size 50 -L {params} "
-        "--sample-name-map {input} "
+        "-V {input} "
         "--reader-threads 5"
 
 rule genotype_gvcf:
