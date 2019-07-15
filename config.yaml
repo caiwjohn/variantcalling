@@ -1,0 +1,14 @@
+# Put samples in order
+reads:
+  "SRR1767684": ["reads/SRR1767684_1.fastq.gz", "reads/SRR1767684_2.fastq.gz"]
+  "SRR1801135": ["reads/SRR1801135_1.fastq.gz", "reads/SRR1801135_2.fastq.gz"]
+  "SRR1801136": ["reads/SRR1801136_1.fastq.gz", "reads/SRR1801136_2.fastq.gz"]
+  "SRR3740803": ["reads/SRR3740803_1.fastq.gz", "reads/SRR3740803_2.fastq.gz"]
+  "SRR3740804": ["reads/SRR3740804_1.fastq.gz", "reads/SRR3740804_2.fastq.gz"]
+  "SRR3740806": ["reads/SRR3740806_1.fastq.gz", "reads/SRR3740806_2.fastq.gz"]
+  "SRR3740807": ["reads/SRR3740807_1.fastq.gz", "reads/SRR3740807_2.fastq.gz"]
+
+samples:
+  "BESC-896": ["mapped_reads/SRR1767684.bam"]
+  "BESC-119": ["mapped_reads/SRR1801135.bam", "mapped_reads/SRR1801136.bam"]
+  "BESC-82": ["mapped_reads/SRR3740803.bam", "mapped_reads/SRR3740804.bam", "mapped_reads/SRR3740806.bam", "mapped_reads/SRR3740807.bam"]
