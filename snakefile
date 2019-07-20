@@ -46,9 +46,9 @@ rule pe_fastq_trim:
 # Merge paired ends into one read
 rule align_ends:
     input:
-        'trimmed_reads/{read}_1.fastq',
-        'trimmed_reads/{read}_2.fastq'
-        #lambda wildcards: expand("trimmed/{read}.fastq", read= config["reads"][wildcards.read])
+        #'trimmed_reads/{read}_1.fastq',
+        #'trimmed_reads/{read}_2.fastq'
+        lambda wildcards: expand("trimmed_reads/{read}.fastq", read= config["reads"][wildcards.read])
         #lambda wildcards: config["reads"][wildcards.read]
     params:
         "Ptrichocarpa_444_v3.0.fa"
@@ -124,7 +124,7 @@ rule haplotype_caller:
         "HaplotypeCaller -I {input.reads} "
         "--emitRefConfidence GVCF "
         "-O {output}"
- 
+
 # TODO will it work passing individually?
 rule consolidate_gvcf:
     input:
