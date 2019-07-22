@@ -1,7 +1,7 @@
 '''
 PREAMBLE
-    1. Store all SR-ID read files in format 'reads/{SR-ID}_{end}.{suffix}'
-    2. run `ls reads | cut -d '_' -f 1 | uniq >> samples.in`
+    Maybe useful:
+        `ls reads | cut -d '_' -f 1 | uniq >> samples.in`
 
 '''
 configfile: "test.yaml"
@@ -46,10 +46,7 @@ rule pe_fastq_trim:
 # Merge paired ends into one read
 rule align_ends:
     input:
-        #'trimmed_reads/{read}_1.fastq',
-        #'trimmed_reads/{read}_2.fastq'
         lambda wildcards: expand("trimmed_reads/{read}.fastq", read= config["reads"][wildcards.read])
-        #lambda wildcards: config["reads"][wildcards.read]
     params:
         "Ptrichocarpa_444_v3.0.fa"
     output:
