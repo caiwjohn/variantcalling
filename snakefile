@@ -4,49 +4,42 @@ PREAMBLE
         `ls reads | cut -d '_' -f 1 | uniq >> samples.in`
 
 '''
+import itertools
+import os
+
 configfile: "test.yaml"
 
-READS= ["SRR1801135", "SRR1801136"]
-SAMPLES= ["BESC-119"]
 
 # Rule to target full run
 rule all:
     input:
         "filtered_vcf/cohort.vcf"
-'''
-# Trim adapters off single-end reads
-rule se_fastq_trim:
-    input:
-        'reads/{sample}.fastq.gz'
-    params:
-        "bbmap/resources/adapters.fa"
-    output:
-        'trimmed_reads/{sample}.fastq'
-    shell:
-        "bbduk.sh in={input} "
-        "out={output} ref= {params} "
-        "ktrim=r k=25"
-'''
 
-# Trim adapters off paired-end reads
-rule pe_fastq_trim:
+# Trim adapters off single-end reads
+rule fastq_trim:
     input:
-        'reads/{read}_1.fastq.gz',
-        'reads/{read}_2.fastq.gz'
+        lambda wildcards: expand("reads/{end}.fastq.gz", end= config["reads"][wildcards.read]["ends"])
     params:
-        "bbmap/resources/adapters.fa"
+        ref= "bbmap/resources/adapters.fa",
+        paired= lambda wildcards: config['reads'][wildcards.read]['paired']
     output:
-        'trimmed_reads/{read}_1.fastq',
-        'trimmed_reads/{read}_2.fastq'
-    shell:
-        "bbduk.sh in={input} "
-        "out={output} ref= {params} "
-        "ktrim=r k=25"
+        pe= {'trimmed_reads/{read}_1.fastq',
+            'trimmed_reads/{read}_2.fastq'},
+        se= 'trimmed_reads/{read}.fastq'
+    run:
+        if {params.paired}:
+            shell("bbduk.sh in={input} "
+                  "out={output.pe} ref= {params.ref} "
+                  "ktrim=r k=25")
+        else:
+            shell("bbduk.sh in={input} "
+                  "out={output.se} ref= {params.ref} "
+                  "ktrim=r k=25")
 
 # Merge paired ends into one read
 rule align_ends:
     input:
-        lambda wildcards: expand("trimmed_reads/{read}.fastq", read= config["reads"][wildcards.read])
+        lambda wildcards: expand("trimmed_reads/{read}.fastq", read= config["reads"][wildcards.read]["ends"])
     params:
         "Ptrichocarpa_444_v3.0.fa"
     output:

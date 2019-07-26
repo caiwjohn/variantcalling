@@ -1,10 +1,27 @@
-# Put samples in order
 reads:
-  "SRR1801135": ["SRR1801135_1", "SRR1801135_2"]
-  "SRR1801136": ["SRR1801136_1", "SRR1801136_2"]
+  "SRR1801135":
+    "paired": True
+    "ends": ["SRR1801135_1", "SRR1801135_2"]
+  "SRR1801136":
+    "paired": True
+    "ends": ["SRR1801136_1", "SRR1801136_2"]
+  "SRR3740803":
+    "paired": True
+    "ends": ["SRR3740803_1", "SRR3740803_2"]
+  "SRR3740804":
+    "paired": True
+    "ends": ["SRR3740804_1", "SRR3740804_2"]
+  "SRR3740806":
+    "paired": True
+    "ends": ["SRR3740806_1", "SRR3740806_2"]
+  "SRR3740807":
+    "paired": True
+    "ends": ["SRR3740807_1", "SRR3740807_2"]
 
 samples:
-  "BESC-119": ["mapped_reads/SRR1801135.bam", "mapped_reads/SRR1801136.bam"]
+ "BESC-119": ["mapped_reads/SRR1801135.bam", "mapped_reads/SRR1801136.bam"]
+ "BESC-82": ["mapped_reads/SRR3740803.bam", "mapped_reads/SRR3740804.bam","mapped_reads/SRR3740806.bam","mapped_reads/SRR3740807.bam"]
 
 map:
-  "BESC-119": "BESC-119.vcf.gz"
+ "BESC-119": "BESC-119.vcf.gz"
+ "BESC-82": "BESC-82.vcf.gz"
