@@ -1,0 +1,10 @@
+data/
+Ptrichocarpa*
+TODO.md
+bbmap/
+info/
+mapped_reads/
+reads/
+snakemake-tutorial/
+.snakemake/
+.DS_Store

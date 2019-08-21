@@ -27,8 +27,10 @@ rule fastq_trim:
             'trimmed_reads/{read}_2.fastq'},
         se= 'trimmed_reads/{read}.fastq'
     run:
-        if {params.paired}:
-            shell("bbduk.sh in={input} "
+        if {len(input)==2}:
+            input1= input[0]
+            input2=input[1]
+            shell("bbduk.sh in1= input1 in2=input2 "
                   "out={output.pe} ref= {params.ref} "
                   "ktrim=r k=25")
         else:
