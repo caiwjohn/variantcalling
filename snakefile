@@ -18,9 +18,9 @@ rule all:
 # Trim adapters off single-end reads
 rule fastq_trim:
     input:
-        lambda wildcards: expand("reads/{end}.fastq.gz", end= config["reads"][wildcards.read]["ends"])
+        lambda wildcards: expand("../{end}.fastq.gz", end= config["reads"][wildcards.read]["ends"])
     params:
-        ref= "bbmap/resources/adapters.fa",
+        ref= "adapters",
         paired= lambda wildcards: config['reads'][wildcards.read]['paired']
     output:
         pe= {'trimmed_reads/{read}_1.fastq',
@@ -28,10 +28,18 @@ rule fastq_trim:
         se= 'trimmed_reads/{read}.fastq'
     run:
         if {len(input)==2}:
-            input1= input[0]
-            input2=input[1]
-            shell("bbduk.sh in1= input1 in2=input2 "
-                  "out={output.pe} ref= {params.ref} "
+            out1_index = [x for x in output.pe if '_1.fastq' in str(x)]
+            out2_index = [x for x in output.pe if '_2.fastq' in str(x)]
+	    input1=str(input[0])
+	    input2=str(input[1])
+            out1=str(out1_index[0])
+	    out2=str(out2_index[0])
+	    print(input1)
+            print(input2)
+            print(out1)
+            print(out2)
+            shell("bbduk.sh in1={input1} in2={input2} "
+                  "out1={out1} out2={out2} ref={params.ref} "
                   "ktrim=r k=25")
         else:
             shell("bbduk.sh in={input} "
