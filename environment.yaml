@@ -1,3 +1,4 @@
+name: variant-call
 channels:
   - bioconda
   - conda-forge

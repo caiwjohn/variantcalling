@@ -17,11 +17,22 @@ reads:
   "SRR3740807":
     "paired": True
     "ends": ["SRR3740807_1", "SRR3740807_2"]
+  "SRR1762759":
+    "single": True
+    "ends": ["SRR1762759"]
+  "SRR1762760":
+    "single": True
+    "ends": ["SRR1762760"]
+  "SRR1762761":
+    "single": True
+    "ends": ["SRR1762761"]
 
 samples:
  "BESC-119": ["mapped_reads/SRR1801135.bam", "mapped_reads/SRR1801136.bam"]
  "BESC-82": ["mapped_reads/SRR3740803.bam", "mapped_reads/SRR3740804.bam","mapped_reads/SRR3740806.bam","mapped_reads/SRR3740807.bam"]
+ "BESC-79": ["mapped_reads/SRR1762759.bam", "mapped_reads/SRR1762760.bam", "mapped_reads/SRR1762761.bam"]
 
 map:
  "BESC-119": "BESC-119.vcf.gz"
  "BESC-82": "BESC-82.vcf.gz"
+ "BESC-79": "BESC-79.vcf.gz"
