@@ -26,11 +26,17 @@ reads:
   "SRR1762761":
     "single": True
     "ends": ["SRR1762761"]
+  "SRR1762762":
+    "single": True
+    "ends": ["SRR1762762"]
+  "SRR1762763":
+    "single": True
+    "ends": ["SRR1762763"]
 
 samples:
  "BESC-119": ["mapped_reads/SRR1801135.bam", "mapped_reads/SRR1801136.bam"]
  "BESC-82": ["mapped_reads/SRR3740803.bam", "mapped_reads/SRR3740804.bam","mapped_reads/SRR3740806.bam","mapped_reads/SRR3740807.bam"]
- "BESC-79": ["mapped_reads/SRR1762759.bam", "mapped_reads/SRR1762760.bam", "mapped_reads/SRR1762761.bam"]
+ "BESC-79": ["mapped_reads/SRR1762759.bam", "mapped_reads/SRR1762760.bam", "mapped_reads/SRR1762761.bam", "mapped_reads/SRR1762762.bam", "mapped_reads/SRR1762763.bam"]
 
 map:
  "BESC-119": "BESC-119.vcf.gz"
