@@ -1,0 +1,261 @@
+'''
+PREAMBLE
+    Maybe useful:
+        `ls reads | cut -d '_' -f 1 | uniq >> samples.in`
+
+#create temp dirs for fastqc and sambamba
+## snakemake --cores 32 -p -s snakefile_fin
+
+'''
+import itertools
+import os
+
+configfile: "test.yaml"
+
+sample_pe = glob_wildcards("paired/{sample}_1.fastq.gz").sample
+
+sample_se = glob_wildcards("single/{sample}.fastq.gz").sample
+
+#snakemake --keep-going --rerun-incomplete --cores 32 -p -s snakefile_fin
+
+fastqc_extension = ["zip", "html"]
+
+# Rule to target full run
+rule all:
+    input:
+        expand("paired_end_qc/{sample}_1_fastqc.{ext}", sample=sample_pe, ext=fastqc_extension),
+        expand("paired_end_qc/{sample}_2_fastqc.{ext}", sample=sample_pe, ext=fastqc_extension),
+        expand("single_end_qc/{sample}_fastqc.{ext}", sample=sample_se, ext=fastqc_extension),
+        expand("trim_qc/{sample}_1_fastqc.{ext}", sample=sample_pe, ext=fastqc_extension),
+        expand("trim_qc/{sample}_2_fastqc.{ext}", sample=sample_pe, ext=fastqc_extension),
+        expand("trim_qc/{sample}_fastqc.{ext}", sample=sample_se, ext=fastqc_extension),
+        expand("bam_depth/{sample}.depth", sample = config["samples"]),
+        expand("GVCF/{sample}.g.vcf", sample = config["samples"])
+
+
+# qc paired end fastq files before trimming
+rule fastqc_pe:
+    input:
+        fq1 = "paired/{sample_pe}_1.fastq.gz",
+        fq2 = "paired/{sample_pe}_2.fastq.gz"
+    threads:4
+    output:
+        r1h = "paired_end_qc/{sample_pe}_1_fastqc.html",
+        r2h = "paired_end_qc/{sample_pe}_2_fastqc.html",
+        r1z = "paired_end_qc/{sample_pe}_1_fastqc.zip",
+        r2z = "paired_end_qc/{sample_pe}_2_fastqc.zip"
+    benchmark:
+        "benchmarks/fastqc_pe_raw/{sample_pe}.txt"
+    shell:
+        "fastqc -t {threads} -d fastqc_temp -o paired_end_qc "
+        "{input.fq1} {input.fq2}"
+
+# qc single end fastq files before trimming
+rule fastqc_se:
+    input:
+        fq = "single/{sample_se}.fastq.gz"
+    threads:4
+    output:
+        "single_end_qc/{sample_se}_fastqc.html",
+        "single_end_qc/{sample_se}_fastqc.zip"
+    benchmark:
+        "benchmarks/fastqc_se_raw/{sample_se}.txt"
+    shell:
+        "fastqc -t {threads} -d fastqc_temp -o single_end_qc "
+        "{input.fq}"
+
+# Trim adapters off paired-end reads
+rule fastq_trim_pe:
+    input:
+        fq1 = "paired/{sample}_1.fastq.gz",
+        fq2 = "paired/{sample}_2.fastq.gz"
+    params:
+        ref= "adapters"
+    threads:8
+    output:
+        fq1o = temp('trimmed_reads/{sample}_1.fastq.gz'), 
+        fq2o = temp('trimmed_reads/{sample}_2.fastq.gz')
+    benchmark:
+        "benchmarks/trim_pe/{sample}.txt"
+    shell:
+        "bbduk.sh in1={input.fq1} in2={input.fq2} "
+        "out1={output.fq1o} out2={output.fq2o} ref={params.ref} "
+        "ktrim=r k=25 trimq=6 t={threads}"
+
+# Trim adapters off single end reads
+rule fastq_trim_se:
+    input:
+        fq = "single/{sample}.fastq.gz"
+    params:
+        ref = "adapters"
+    threads:8
+    output:
+        fqo = temp("trimmed_reads/{sample}.fastq.gz")
+    benchmark:
+        "benchmarks/trim_se/{sample}.txt"
+    shell:
+        "bbduk.sh in={input.fq} "
+        "out={output.fqo} ref={params.ref} "
+        "ktrim=r k=25 trimq=6 t={threads}"
+
+# run fastqc on trimmed reads
+rule fastqc_trim:
+    input: 
+        fqin = "trimmed_reads/{sample}.fastq.gz"
+    output:
+        "trim_qc/{sample}_fastqc.html",
+        "trim_qc/{sample}_fastqc.zip"
+    threads:4
+    benchmark:
+        "benchmarks/fastqc_trim/{sample}.txt"
+    shell:
+        "fastqc -t {threads} -d fastqc_temp -o trim_qc "
+        "{input.fqin}"
+
+# Merge paired ends into one read
+rule align_ends:
+    input:
+        lambda wildcards: expand("trimmed_reads/{read}.fastq.gz", read= config["reads"][wildcards.read]["ends"])
+    params:
+        "Ptrichocarpa_444_v3.0.fa"
+    threads:8
+    output:
+        temp("mapped_reads/{read}.bam")
+    benchmark:
+        "benchmarks/bwa_mem_sort/{read}.txt"
+    shell:
+        "bwa mem -t {threads} {params} {input} | "
+        "samtools sort -m 3G -@{threads} -o {output}"
+
+# Merge reads for one sample based on config file
+rule merge_sort_bam:
+    input:
+        lambda wildcards: config["samples"][wildcards.sample]
+    threads:8
+    output:
+        temp("merged_bam/{sample}.bam")
+    benchmark:
+        "benchmarks/merge/{sample}.txt"
+    shell:
+        "samtools merge -@ {threads} {output} {input}"
+
+rule bam_depth:
+    input:
+        "merged_bam/{sample}.bam"
+    output:
+        "bam_depth/{sample}.depth"
+    benchmark:
+        "benchmarks/bam_depth/{sample}.txt"
+    shell:
+        "samtools depth -a {input} | awk '{{sum+=$3}} END {{ print \"\",sum/NR}}' > {output}"
+
+
+rule read_groups:
+    input:
+        "merged_bam/{sample}.bam"
+    output:
+        temp("labeled_bam/{sample}.bam")
+    params:
+        rg = r"-r '@RG\tID:{sample}\tLB:NA\tPL:illumina\tSM:{sample}\tPU:NA'"
+    threads:8
+    benchmark:
+        "benchmarks/add_read_groups/{sample}.txt"
+    shell:
+        "samtools addreplacerg -@ {threads} -o {output} {params.rg} {input}"
+
+# Marks alleles that may have been falsely amplified during PCR
+rule mark_duplicates:
+    input:
+        "labeled_bam/{sample}.bam"
+    threads:8
+    output:
+        temp("duplicate_marked/{sample}.bam")
+    benchmark:
+        "benchmarks/mark_duplicates/{sample}.txt"
+    shell:
+        "sambamba markdup --overflow-list-size 600000 --tmpdir sambamba_temp -t {threads} {input} {output}"
+
+## Scott hasn't seen much benefit to recalibrating and BQSR
+rule recalibrate:
+    input:
+        ref= "Ptrichocarpa_444_v3.0.fa",
+        reads= "duplicate_marked/{sample}.bam"
+    output:
+        "recal/{sample}_report.table"
+    benchmark:
+        "benchmarks/recalibrate/{sample}.txt"
+    shell:
+        "gatk BaseRecalibrator -R {input.ref} "
+        "-I {input.reads} -O {output} --known-sites Chr13_subset_882.vcf"
+
+# Parameterizes to detect false positives
+rule BQSR:
+    input:
+        ref= "Ptrichocarpa_444_v3.0.fa",
+        reads= "duplicate_marked/{sample}.bam",
+        recal= "recal/{sample}_report.table"
+    output:
+        temp("recal/{sample}.bam")
+    benchmark:
+        "benchmarks/bqsr/{sample}.txt"
+    shell:
+        "gatk ApplyBQSR -R {input.ref} "
+        "-I {input.reads} --bqsr-recal-file "
+        "{input.recal} -O {output}"
+
+# samtools is faster than HaplotypeCaller
+rule haplotype_caller:
+    input:
+        ref= "Ptrichocarpa_444_v3.0.fa",
+        reads= "recal/{sample}.bam"
+    threads: 8
+    output:
+        "GVCF/{sample}.g.vcf"
+    benchmark:
+        "benchmarks/haplotype_caller/{sample}.txt"
+    shell:
+        "gatk HaplotypeCaller "
+        "--java-options -Xmx32g "
+        "-R {input.ref} "
+        "-I {input.reads} "
+        "--emit-ref-confidence GVCF "
+        "--native-pair-hmm-threads {threads} "
+        "-O {output}"
+
+#https://bitbucket.org/snakemake/snakemake/issues/895/combine-multiple-files-for-input-but
+#rule consolidate_gvcf:
+#    input:
+#        expand("GVCF/{sample}.g.vcf", sample= config['samples'])
+#    params:
+#        # ref = "Ptrichocarpa_444_v3.0.bed"
+#        lambda wildcards, input: " -V ".join(input)
+#    output:
+#        directory("cohort_database")
+#    shell:
+#        "gatk GenomicsDBImport "
+#        "--genomicsdb-workspace-path {output} "
+#        "--batch-size 50 -L Ptrichocarpa_444_v3.0.bed "
+#        "-V {params} "
+#        "--reader-threads 5"
+
+#rule genotype_gvcf:
+#    input:
+#        ref= "Ptrichocarpa_444_v3.0.fa",
+#        db= "cohort_database"
+#    output:
+#        "unfiltered_vcf/cohort.vcf"
+#    shell:
+#        "gatk GenotypeGVCFs -R {input.ref} "
+#        "-V {input.db} "
+#        "-newQual -O {output}"
+
+#TODO: insert quality filters flag
+#rule filter_vcf:
+#    input:
+#        "unfiltered_vcf/cohort.vcf"
+#    output:
+#        "filtered_vcf/cohort.vcf"
+#    shell:
+#        "picard FilterVcf -I {input} "
+#        "-O {output} "
+#        "-[insert quality filters here]"
